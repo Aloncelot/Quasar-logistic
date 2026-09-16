@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Activity, Package, Truck } from "lucide-react";
 
-// Tipamos el JSON que vimos en image_3d4e0a.png
 interface KPIData {
   global: {
     on_time_pct: number;
@@ -21,14 +20,13 @@ export default function Dashboard() {
   const [data, setData] = useState<KPIData | null>(null);
 
   useEffect(() => {
-    // Consumiendo tu API de FastAPI local
     fetch("http://18.223.124.192/api/kpi/otif")
       .then((res) => res.json())
       .then((json) => setData(json))
       .catch((err) => console.error("Error al cargar datos:", err));
   }, []);
 
-  // Variantes de Framer Motion para orquestar la animación de entrada
+  // Framer Motion para animación de entrada
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
