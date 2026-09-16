@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/kpi/otif',
-        destination: 'http://18.223.124.192/:path*'
+        source: '/api/:path*',
+        destination: 'http://18.223.124.192/api/:path*' 
       }
     ]
   }
