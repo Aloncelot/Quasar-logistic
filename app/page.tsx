@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [data, setData] = useState<KPIData | null>(null);
 
   useEffect(() => {
-    fetch("http://18.223.124.192/api/kpi/otif")
+    fetch("/api/kpi/otif")
       .then((res) => res.json())
       .then((json) => setData(json))
       .catch((err) => console.error("Error al cargar datos:", err));
