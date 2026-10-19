@@ -16,6 +16,13 @@ const formatoSemana = (iso: string) => {
 
 type Vista = "semanal" | "mensual";
 
+interface PuntoTendencia {
+  etiqueta: string;
+  on_time_pct: number;
+  in_full_pct: number;
+  otif_pct: number;
+}
+
 export default function TrendChart({
   semanal,
   mensual,
@@ -27,10 +34,21 @@ export default function TrendChart({
 }) {
   const [vista, setVista] = useState<Vista>("semanal");
 
-  const datos =
+  // Una sola forma de punto para ambas vistas (Recharts exige un arreglo de un solo tipo)
+  const datos: PuntoTendencia[] =
     vista === "semanal"
-      ? semanal.map((s) => ({ ...s, etiqueta: formatoSemana(s.Semana) + (s.parcial ? "*" : "") }))
-      : mensual.map((m) => ({ ...m, parcial: false }));
+      ? semanal.map((s) => ({
+          etiqueta: formatoSemana(s.Semana) + (s.parcial ? "*" : ""),
+          on_time_pct: s.on_time_pct,
+          in_full_pct: s.in_full_pct,
+          otif_pct: s.otif_pct,
+        }))
+      : mensual.map((m) => ({
+          etiqueta: m.etiqueta,
+          on_time_pct: m.on_time_pct,
+          in_full_pct: m.in_full_pct,
+          otif_pct: m.otif_pct,
+        }));
 
   const minimo = Math.min(meta, ...datos.flatMap((d) => [d.on_time_pct, d.in_full_pct, d.otif_pct]));
   const piso = Math.max(0, Math.floor((minimo - 5) / 5) * 5);
