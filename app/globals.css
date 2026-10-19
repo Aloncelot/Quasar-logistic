@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+  Sistema visual "Noche polar": fondo profundo, datos en azules y verdes fríos.
+  Los únicos tonos cálidos son los del semáforo (en riesgo / fuera de meta).
+*/
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-barlow-condensed), var(--font-barlow), ui-sans-serif, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-abismo: #020617; /* fondo del acceso */
+  --color-noche: #070d1a; /* fondo del tablero */
+  --color-panel: #0c1526;
+  --color-panel-2: #111d33;
+  --color-linea: #1c2a44;
+  --color-tinta: #e6edf7;
+  --color-niebla: #93a2bc;
+  --color-bruma: #5e6e8c;
+
+  /* Serie de datos (fríos) */
+  --color-hielo: #9ccbff;
+  --color-cobalto: #4c82f7;
+  --color-artico: #3cc4b4;
+  --color-lavanda: #a3a6f5;
+  --color-acero: #6c84ae;
+
+  /* Semáforo */
+  --color-ok: #38c7a1;
+  --color-riesgo: #e7b85c;
+  --color-alerta: #f0748e;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-noche);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-hielo);
+  outline-offset: 2px;
+}
+
+/* Enlace de autoría: turquesa oscuro que se enciende y apaga suavemente al pasar el cursor */
+.enlace-quasar {
+  color: #0f766e;
+  text-decoration: none;
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+.enlace-quasar:hover,
+.enlace-quasar:focus-visible {
+  animation: encendido 1.8s ease-in-out infinite;
+}
+@keyframes encendido {
+  0%,
+  100% {
+    color: #0f766e;
+    text-shadow: none;
+  }
+  50% {
+    color: #5eead4;
+    text-shadow: 0 0 6px rgba(45, 212, 191, 0.75), 0 0 18px rgba(45, 212, 191, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
