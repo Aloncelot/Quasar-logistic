@@ -81,6 +81,7 @@ export interface EstadoKPI extends Indicadores {
 export interface ParetoItem {
   Motivo: string;
   Categoria: string;
+  Categoria_id: string; // transporte | almacen | otro (no cambia con el idioma)
   Frecuencia: number;
   Pct: number;
   Pct_Acumulado: number;
@@ -108,6 +109,7 @@ export interface FallasEstadoItem {
 }
 
 export interface CategoriaItem {
+  id: string;
   categoria: string;
   pedidos: number;
   pct: number;
@@ -190,6 +192,7 @@ export interface Titulares {
 }
 
 export interface KPIData {
+  idioma: "es" | "en";
   periodo: Periodo;
   global: Global;
   kpis: KpiTarjeta[];
@@ -245,20 +248,28 @@ export const SEMAFORO: Record<Semaforo, { etiqueta: string; texto: string; fondo
   rojo: { etiqueta: "Fuera de meta", texto: "text-alerta", fondo: "bg-alerta/10", solido: "#f0748e" },
 };
 
+// Por identificador de categoría (el nombre visible cambia con el idioma)
 export const COLOR_CATEGORIA: Record<string, string> = {
-  Transporte: PALETA.cobalto,
-  "Almacén": PALETA.lavanda,
-  Otro: PALETA.acero,
+  transporte: PALETA.cobalto,
+  almacen: PALETA.lavanda,
+  otro: PALETA.acero,
 };
 
-// Formato de moneda compacto: $46.9 M, $850 mil
-export const fmtMxn = (v: number) => {
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toLocaleString("es-MX", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} M`;
-  if (Math.abs(v) >= 1_000) return `$${Math.round(v / 1_000).toLocaleString("es-MX")} mil`;
-  return `$${Math.round(v).toLocaleString("es-MX")}`;
+// Formato de moneda compacto: $46.9 M / $850 mil (es) · $46.9M / $850K (en)
+export const fmtMxn = (v: number, idioma: "es" | "en" = "es") => {
+  const locale = idioma === "en" ? "en-US" : "es-MX";
+  if (Math.abs(v) >= 1_000_000) {
+    const m = (v / 1_000_000).toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    return idioma === "en" ? `$${m}M` : `$${m} M`;
+  }
+  if (Math.abs(v) >= 1_000) {
+    const k = Math.round(v / 1_000).toLocaleString(locale);
+    return idioma === "en" ? `$${k}K` : `$${k} mil`;
+  }
+  return `$${Math.round(v).toLocaleString(locale)}`;
 };
 
-export const fmtNum = (v: number) => v.toLocaleString("es-MX");
+export const fmtNum = (v: number, idioma: "es" | "en" = "es") => v.toLocaleString(idioma === "en" ? "en-US" : "es-MX");
 
 // Estilo compartido de tooltips de Recharts
 export const tooltipStyle = {

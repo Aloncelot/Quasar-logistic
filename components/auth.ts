@@ -4,8 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export interface Sesion {
   usuario: string;
-  nombre: string;
-  rol: "Administrador" | "Invitado";
+  rol: "admin" | "invitado"; // el nombre visible sale del diccionario del idioma activo
 }
 
 export const CREDENCIALES_DEMO = { usuario: "demo", contrasena: "Quasar2026" };
@@ -13,7 +12,7 @@ export const CREDENCIALES_DEMO = { usuario: "demo", contrasena: "Quasar2026" };
 const USUARIOS: Record<string, { contrasena: string; sesion: Sesion }> = {
   [CREDENCIALES_DEMO.usuario]: {
     contrasena: CREDENCIALES_DEMO.contrasena,
-    sesion: { usuario: "demo", nombre: "Gerencia de Logística", rol: "Administrador" },
+    sesion: { usuario: "demo", rol: "admin" },
   },
 };
 
@@ -54,7 +53,9 @@ export function useSesion(): Sesion | null | undefined {
   if (crudo === PENDIENTE) return undefined;
   if (!crudo) return null;
   try {
-    return JSON.parse(crudo) as Sesion;
+    const sesion = JSON.parse(crudo) as { usuario: string; rol: string };
+    // Compatibilidad con sesiones guardadas por la versión anterior ("Administrador" / "Invitado")
+    return { usuario: sesion.usuario, rol: sesion.rol === "admin" || sesion.rol === "Administrador" ? "admin" : "invitado" };
   } catch {
     return null;
   }
@@ -68,7 +69,7 @@ export function iniciarSesion(usuario: string, contrasena: string): boolean {
 }
 
 export function entrarComoInvitado() {
-  escribir(JSON.stringify({ usuario: "invitado", nombre: "Invitado", rol: "Invitado" } satisfies Sesion));
+  escribir(JSON.stringify({ usuario: "invitado", rol: "invitado" } satisfies Sesion));
 }
 
 export function cerrarSesion() {

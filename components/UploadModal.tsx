@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, Activity, CircleAlert, Database, X } from "lucide-react";
+import { useT } from "./i18n";
 
 /** Ventana para cargar el CSV (arrastrar y soltar, explorador o datos de ejemplo). */
 export default function UploadModal({
@@ -20,6 +21,7 @@ export default function UploadModal({
   onArchivo: (archivo: File) => void;
   onEjemplo: () => void;
 }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [arrastrando, setArrastrando] = useState(false);
 
@@ -50,15 +52,14 @@ export default function UploadModal({
               onClick={onCerrar}
               disabled={procesando}
               className="absolute top-4 right-4 text-niebla hover:text-tinta cursor-pointer"
-              aria-label="Cerrar"
+              aria-label={t.carga.cerrar}
             >
               <X size={20} />
             </button>
 
-            <h2 className="font-display text-2xl font-semibold text-tinta mb-1">Cargar reporte de entregas</h2>
+            <h2 className="font-display text-2xl font-semibold text-tinta mb-1">{t.carga.titulo}</h2>
             <p className="text-niebla text-sm mb-6">
-              Importa el reporte de SAP en formato <code className="text-hielo">.csv</code> para calcular los
-              indicadores del periodo.
+              {t.carga.descripcion}
             </p>
 
             <input
@@ -102,15 +103,13 @@ export default function UploadModal({
               {procesando ? (
                 <div className="text-hielo animate-pulse flex flex-col items-center">
                   <Activity size={48} className="mb-3" />
-                  <p className="font-medium">Analizando pedidos...</p>
+                  <p className="font-medium">{t.carga.analizando}</p>
                 </div>
               ) : (
                 <>
                   <UploadCloud size={48} className={`mb-3 ${arrastrando ? "text-hielo" : "text-bruma"}`} />
-                  <p className="text-tinta font-medium text-center">
-                    Arrastra y suelta tu archivo <span className="text-hielo">.csv</span> aquí
-                  </p>
-                  <p className="text-niebla text-sm mt-1">o haz clic para buscarlo</p>
+                  <p className="text-tinta font-medium text-center">{t.carga.soltar}</p>
+                  <p className="text-niebla text-sm mt-1">{t.carga.buscar}</p>
                 </>
               )}
             </div>
@@ -120,7 +119,7 @@ export default function UploadModal({
               disabled={procesando}
               className="mt-4 w-full flex items-center justify-center gap-2 text-sm text-hielo border border-linea hover:bg-hielo/10 rounded-lg py-2.5 transition cursor-pointer disabled:opacity-50"
             >
-              <Database size={16} /> Usar datos de ejemplo (3,000 pedidos simulados)
+              <Database size={16} /> {t.carga.ejemplo}
             </button>
 
             {error && (

@@ -3,6 +3,7 @@
 import React from "react";
 import ChartCard from "./ChartCard";
 import { HeatmapData } from "./types";
+import { useT } from "./i18n";
 
 // Rampa fría: panel → cobalto → hielo según la intensidad (0..1)
 const PARADAS = [
@@ -18,21 +19,22 @@ const colorCelda = (t: number) => {
 };
 
 export default function CauseHeatmap({ data }: { data: HeatmapData }) {
+  const t = useT();
   const max = Math.max(1, ...data.valores.flat());
 
   return (
-    <ChartCard title="Concentración de causas por estado" subtitle="Número de incidencias por causa y destino. Más claro, más casos." className="h-auto">
+    <ChartCard title={t.heatmap.titulo} subtitle={t.heatmap.subtitulo} className="h-auto">
       <div className="overflow-x-auto">
         <table className="w-full border-separate border-spacing-1 text-sm">
           <thead>
             <tr>
-              <th className="p-2 text-left text-xs font-medium text-bruma">Causa</th>
+              <th className="p-2 text-left text-xs font-medium text-bruma">{t.heatmap.causa}</th>
               {data.estados.map((e) => (
                 <th key={e} className="whitespace-nowrap p-2 text-xs font-medium text-niebla">
                   {e}
                 </th>
               ))}
-              <th className="p-2 text-xs font-medium text-niebla">Total</th>
+              <th className="p-2 text-xs font-medium text-niebla">{t.heatmap.total}</th>
             </tr>
           </thead>
           <tbody>

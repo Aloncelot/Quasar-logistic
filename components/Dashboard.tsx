@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Activity, UploadCloud, LogOut, Truck, Database, ChevronDown, CircleAlert, FileSpreadsheet } from "lucide-react";
 import MapChart from "./MapChart";
@@ -21,20 +21,21 @@ import { FinanceStrip, ClientImpactTable } from "./FinancePanel";
 import Recommendations from "./Recommendations";
 import ExportPanel from "./ExportPanel";
 import UploadModal from "./UploadModal";
+import LanguageSwitch from "./LanguageSwitch";
+import ServerSwitch, { AwsPanel, useEstadoAws } from "./ServerSwitch";
+import Creditos from "./Creditos";
 import { analizarArchivo, descargarReporte, obtenerEjemplo, FormatoReporte } from "./api";
 import { cerrarSesion, Sesion } from "./auth";
+import { useIdioma, useServidor, type Servidor } from "./preferencias";
+import { useT } from "./i18n";
 import { KPIData, fmtNum } from "./types";
 
-const NAVEGACION = [
-  { id: "resumen", texto: "Resumen" },
-  { id: "evolucion", texto: "Evolución" },
-  { id: "donde", texto: "Dónde" },
-  { id: "porque", texto: "Por qué" },
-  { id: "socios", texto: "Socios" },
-  { id: "finanzas", texto: "Finanzas" },
-  { id: "acciones", texto: "Acciones" },
-  { id: "descargar", texto: "Descargar" },
-];
+const SECCIONES = ["resumen", "evolucion", "donde", "porque", "socios", "finanzas", "acciones", "descargar"];
+
+const NOMBRE_SERVIDOR: Record<Servidor, string> = {
+  azure: "Azure Container Apps",
+  aws: "AWS EC2 · Docker",
+};
 
 // Única secuencia de entrada orquestada: la primera pantalla del resumen
 const contenedor: Variants = {
@@ -47,14 +48,24 @@ const elemento: Variants = {
 };
 
 export default function Dashboard({ sesion }: { sesion: Sesion }) {
+  const t = useT();
+  const [idioma] = useIdioma();
+  const [servidor, setServidor] = useServidor();
+  const { estado: estadoAws, refrescar: refrescarAws } = useEstadoAws();
+
+  // Si se eligió AWS pero aún no está encendido, el análisis se resuelve en Azure
+  const servidorActivo: Servidor = servidor === "aws" && estadoAws?.lista ? "aws" : "azure";
+
   const [data, setData] = useState<KPIData | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [procesadoEn, setProcesadoEn] = useState<{ servidor: Servidor; ms: number } | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [exportando, setExportando] = useState<FormatoReporte | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorExportar, setErrorExportar] = useState<string | null>(null);
   const [verDetalle, setVerDetalle] = useState(false);
+  const archivoRef = useRef<File | null>(null);
 
   // Evita que el navegador abra el archivo si se suelta fuera de la zona de carga
   useEffect(() => {
@@ -67,23 +78,46 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
     };
   }, []);
 
+  // Al cambiar de idioma o de servidor se vuelve a analizar el archivo cargado
+  useEffect(() => {
+    const actual = archivoRef.current;
+    if (!actual) return;
+    let vigente = true;
+    analizarArchivo(actual, servidorActivo, idioma, t.errores)
+      .then(({ datos, ms }) => {
+        if (!vigente) return;
+        setData(datos);
+        setProcesadoEn({ servidor: servidorActivo, ms });
+      })
+      .catch(() => {
+        /* se conserva el último resultado mostrado */
+      });
+    return () => {
+      vigente = false;
+    };
+    // t.errores cambia junto con el idioma
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idioma, servidorActivo]);
+
   const procesar = async (nuevo: File) => {
     setError(null);
     if (!nuevo.name.toLowerCase().endsWith(".csv")) {
-      setError("El archivo debe tener extensión .csv");
+      setError(t.carga.soloCsv);
       setModalAbierto(true);
       return;
     }
     setProcesando(true);
     try {
-      const resultado = await analizarArchivo(nuevo);
-      setData(resultado);
+      const { datos, ms } = await analizarArchivo(nuevo, servidorActivo, idioma, t.errores);
+      archivoRef.current = nuevo;
+      setData(datos);
       setArchivo(nuevo);
+      setProcesadoEn({ servidor: servidorActivo, ms });
       setModalAbierto(false);
       setErrorExportar(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo procesar el archivo.");
+      setError(err instanceof Error ? err.message : t.errores.procesar);
       setModalAbierto(true);
     } finally {
       setProcesando(false);
@@ -94,9 +128,9 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
     setError(null);
     setProcesando(true);
     try {
-      await procesar(await obtenerEjemplo());
+      await procesar(await obtenerEjemplo(servidorActivo, t.errores));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudieron obtener los datos de ejemplo.");
+      setError(err instanceof Error ? err.message : t.errores.ejemplo);
       setModalAbierto(true);
       setProcesando(false);
     }
@@ -107,9 +141,9 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
     setErrorExportar(null);
     setExportando(formato);
     try {
-      await descargarReporte(archivo, formato);
+      await descargarReporte(archivo, formato, servidorActivo, idioma, t.errores);
     } catch (err) {
-      setErrorExportar(err instanceof Error ? err.message : "No se pudo generar el reporte.");
+      setErrorExportar(err instanceof Error ? err.message : t.errores.reporte);
     } finally {
       setExportando(null);
     }
@@ -117,6 +151,7 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
 
   const kpis = data ? Object.fromEntries(data.kpis.map((k) => [k.id, k])) : {};
   const metaOtif = data?.metas.otif_pct?.meta ?? 90;
+  const mostrarPanelAws = servidor === "aws" && !estadoAws?.lista;
 
   return (
     <main className="min-h-screen bg-noche font-sans text-tinta">
@@ -128,16 +163,16 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               <Truck className="text-hielo" size={21} />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-semibold leading-none text-tinta">Torre de Control Logística</h1>
+              <h1 className="font-display text-2xl font-semibold leading-none text-tinta">{t.encabezado.titulo}</h1>
               <p className="mt-1 text-sm text-niebla">
-                {data
-                  ? `Cumplimiento de entregas, ${data.periodo.etiqueta}`
-                  : "Análisis de cumplimiento de entregas a partir del reporte de SAP"}
+                {data ? t.encabezado.periodo(data.periodo.etiqueta) : t.encabezado.vacio}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <ServerSwitch servidor={servidor} onCambiar={setServidor} estadoAws={estadoAws} />
+            <LanguageSwitch />
             <button
               onClick={() => {
                 setError(null);
@@ -146,21 +181,21 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               className="flex items-center gap-2 rounded-lg bg-hielo px-4 py-2 text-sm font-semibold text-noche transition-colors hover:bg-white"
             >
               <UploadCloud size={17} />
-              {data ? "Cargar otro reporte" : "Cargar reporte"}
+              {data ? t.encabezado.cargarOtro : t.encabezado.cargar}
             </button>
             <div className="flex items-center gap-2 border-l border-linea pl-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-panel-2 font-display text-base font-semibold text-hielo">
-                {sesion.nombre.slice(0, 1)}
+                {t.sesion[sesion.rol].slice(0, 1)}
               </div>
               <div className="hidden leading-tight sm:block">
-                <p className="text-sm text-tinta">{sesion.nombre}</p>
-                <p className="text-xs text-bruma">{sesion.rol}</p>
+                <p className="text-sm text-tinta">{t.sesion[sesion.rol]}</p>
+                <p className="text-xs text-bruma">{sesion.rol === "admin" ? t.sesion.rolAdmin : t.sesion.rolInvitado}</p>
               </div>
               <button
                 onClick={cerrarSesion}
                 className="ml-1 rounded-lg p-2 text-niebla transition-colors hover:bg-panel-2 hover:text-tinta"
-                title="Cerrar sesión"
-                aria-label="Cerrar sesión"
+                title={t.sesion.salir}
+                aria-label={t.sesion.salir}
               >
                 <LogOut size={18} />
               </button>
@@ -169,15 +204,15 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
         </div>
 
         {data && (
-          <nav className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 pb-3 text-sm sm:px-8" aria-label="Secciones">
-            {NAVEGACION.map((n, i) => (
+          <nav className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 pb-3 text-sm sm:px-8" aria-label={t.encabezado.secciones}>
+            {SECCIONES.map((id, i) => (
               <a
-                key={n.id}
-                href={`#${n.id}`}
+                key={id}
+                href={`#${id}`}
                 className="flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-niebla transition-colors hover:bg-panel-2 hover:text-tinta"
               >
                 <span className="font-display text-xs font-semibold text-bruma">{String(i + 1).padStart(2, "0")}</span>
-                {n.texto}
+                {t.navegacion[i]}
               </a>
             ))}
           </nav>
@@ -185,6 +220,10 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
       </header>
 
       <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-8">
+        {mostrarPanelAws && (
+          <AwsPanel estadoAws={estadoAws} onUsarAzure={() => setServidor("azure")} onRefrescar={refrescarAws} />
+        )}
+
         {!data ? (
           /* Estado vacío */
           <motion.div
@@ -193,17 +232,14 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
             className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-linea bg-panel/50 p-8 text-center"
           >
             <FileSpreadsheet size={56} className="mb-4 text-acero" />
-            <h2 className="font-display text-3xl font-semibold text-tinta">Carga el reporte de entregas para empezar</h2>
-            <p className="mt-3 max-w-lg text-niebla">
-              Importa el reporte de SAP (.csv) y obtén los indicadores de cumplimiento, los hallazgos clave y las
-              recomendaciones del periodo.
-            </p>
+            <h2 className="font-display text-3xl font-semibold text-tinta">{t.vacio.titulo}</h2>
+            <p className="mt-3 max-w-lg text-niebla">{t.vacio.descripcion}</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => setModalAbierto(true)}
                 className="flex items-center gap-2 rounded-lg bg-hielo px-5 py-2.5 font-semibold text-noche transition-colors hover:bg-white"
               >
-                <UploadCloud size={18} /> Cargar archivo CSV
+                <UploadCloud size={18} /> {t.vacio.cargar}
               </button>
               <button
                 onClick={usarEjemplo}
@@ -211,7 +247,7 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
                 className="flex items-center gap-2 rounded-lg border border-linea px-5 py-2.5 font-semibold text-hielo transition-colors hover:bg-hielo/10 disabled:opacity-60"
               >
                 {procesando ? <Activity size={18} className="animate-pulse" /> : <Database size={18} />}
-                Ver con datos de ejemplo
+                {t.vacio.ejemplo}
               </button>
             </div>
             {error && !modalAbierto && (
@@ -231,16 +267,25 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
             <div className="space-y-20">
               {/* Ficha del archivo */}
               <p className="text-sm text-bruma">
-                Fuente: <span className="text-niebla">{archivo?.name}</span>
+                {t.ficha.fuente} <span className="text-niebla">{archivo?.name}</span>
                 <span className="mx-3 text-linea">|</span>
-                {fmtNum(data.global.volumen_total)} pedidos con fecha prometida del {data.periodo.inicio} al {data.periodo.fin}
+                {t.ficha.pedidos(fmtNum(data.global.volumen_total, idioma), data.periodo.inicio, data.periodo.fin)}
+                {procesadoEn && (
+                  <>
+                    <span className="mx-3 text-linea">|</span>
+                    {t.ficha.procesado}{" "}
+                    <span className="text-niebla">
+                      {NOMBRE_SERVIDOR[procesadoEn.servidor]} ({fmtNum(procesadoEn.ms, idioma)} ms)
+                    </span>
+                  </>
+                )}
                 {data.global.filas_descartadas > 0 && (
-                  <span className="ml-3 text-riesgo">{data.global.filas_descartadas} filas descartadas por datos inválidos</span>
+                  <span className="ml-3 text-riesgo">{t.ficha.descartadas(data.global.filas_descartadas)}</span>
                 )}
               </p>
 
               {/* 1. Resumen ejecutivo */}
-              <Section id="resumen" numero={1} titulo="Resumen ejecutivo" titular={data.titulares.resumen}>
+              <Section id="resumen" numero={1} titulo={t.secciones.resumen} titular={data.titulares.resumen}>
                 <motion.div variants={contenedor} initial="oculto" animate="visible" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {kpis.otif_pct && (
                     <motion.div variants={elemento} className="md:col-span-2 xl:col-span-1 xl:row-span-2">
@@ -256,22 +301,21 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
                     ))}
                 </motion.div>
                 <p className="mt-3 text-sm text-bruma">
-                  La variación compara {data.periodo.mes_actual?.toLowerCase()} contra {data.periodo.mes_anterior?.toLowerCase()}.
-                  Verde: en meta. Ámbar: dentro de la tolerancia. Rosa: fuera de meta.
+                  {t.secciones.variacion(data.periodo.mes_actual ?? "", data.periodo.mes_anterior ?? "")}
                 </p>
                 <div className="mt-10">
-                  <h3 className="mb-4 font-display text-2xl font-semibold text-tinta">Hallazgos clave</h3>
+                  <h3 className="mb-4 font-display text-2xl font-semibold text-tinta">{t.secciones.hallazgos}</h3>
                   <Insights items={data.hallazgos} />
                 </div>
               </Section>
 
               {/* 2. Evolución */}
-              <Section id="evolucion" numero={2} titulo="¿Cómo vamos en el tiempo?" titular={data.titulares.tendencia}>
+              <Section id="evolucion" numero={2} titulo={t.secciones.evolucion} titular={data.titulares.tendencia}>
                 <TrendChart semanal={data.tendencia} mensual={data.mensual} meta={metaOtif} />
               </Section>
 
               {/* 3. Geografía */}
-              <Section id="donde" numero={3} titulo="¿Dónde fallamos?" titular={data.titulares.geografia}>
+              <Section id="donde" numero={3} titulo={t.secciones.donde} titular={data.titulares.geografia}>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
                   <div className="lg:col-span-2">
                     <MapChart mapData={data.mapa} meta={metaOtif} />
@@ -286,7 +330,7 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               </Section>
 
               {/* 4. Causas */}
-              <Section id="porque" numero={4} titulo="¿Por qué fallamos?" titular={data.titulares.causas}>
+              <Section id="porque" numero={4} titulo={t.secciones.porque} titular={data.titulares.causas}>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                   <div className="lg:col-span-2">
                     <ParetoChart paretoData={data.pareto} />
@@ -296,7 +340,7 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               </Section>
 
               {/* 5. Socios logísticos */}
-              <Section id="socios" numero={5} titulo="Transportistas y centros de distribución" titular={data.titulares.socios}>
+              <Section id="socios" numero={5} titulo={t.secciones.socios} titular={data.titulares.socios}>
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
                   <div className="xl:col-span-3">
                     <CarrierScorecard data={data.transportistas} meta={data.metas.on_time_pct?.meta ?? 93} />
@@ -308,7 +352,7 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               </Section>
 
               {/* 6. Finanzas y clientes */}
-              <Section id="finanzas" numero={6} titulo="Impacto financiero y en clientes" titular={data.titulares.finanzas}>
+              <Section id="finanzas" numero={6} titulo={t.secciones.finanzas} titular={data.titulares.finanzas}>
                 <div className="space-y-6">
                   <FinanceStrip g={data.global} />
                   <ClientImpactTable data={data.clientes} titular={data.titulares.clientes} />
@@ -316,17 +360,15 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               </Section>
 
               {/* Detalle operativo (plegable, para el equipo de operación) */}
-              <section aria-label="Análisis operativo detallado">
+              <section aria-label={t.secciones.detalle}>
                 <button
                   onClick={() => setVerDetalle((v) => !v)}
                   aria-expanded={verDetalle}
                   className="flex w-full items-center justify-between gap-4 rounded-xl border border-linea bg-panel px-6 py-5 text-left transition-colors hover:bg-panel-2"
                 >
                   <span>
-                    <span className="block font-display text-xl font-semibold text-tinta">Análisis operativo detallado</span>
-                    <span className="mt-0.5 block text-sm text-bruma">
-                      Para el equipo de operación: concentración de causas, días de retraso, faltantes y tamaño de pedido.
-                    </span>
+                    <span className="block font-display text-xl font-semibold text-tinta">{t.secciones.detalle}</span>
+                    <span className="mt-0.5 block text-sm text-bruma">{t.secciones.detalleSub}</span>
                   </span>
                   <motion.span animate={{ rotate: verDetalle ? 180 : 0 }}>
                     <ChevronDown className="text-niebla" />
@@ -355,22 +397,12 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
               </section>
 
               {/* 7. Conclusiones y recomendaciones */}
-              <Section
-                id="acciones"
-                numero={7}
-                titulo="Conclusiones y recomendaciones"
-                titular="Acciones priorizadas por su impacto estimado en los pedidos perfectos."
-              >
+              <Section id="acciones" numero={7} titulo={t.secciones.acciones} titular={t.secciones.accionesSub}>
                 <Recommendations conclusiones={data.conclusiones} recomendaciones={data.recomendaciones} />
               </Section>
 
               {/* Destino: descarga del reporte (al final de la página) */}
-              <Section
-                id="descargar"
-                destino
-                titulo="Lleva el reporte a tu junta"
-                titular={`Todo el análisis de ${data.periodo.etiqueta_corta} en documento y presentación, generados con texto, tablas y gráficas reales.`}
-              >
+              <Section id="descargar" destino titulo={t.secciones.destino} titular={t.secciones.destinoSub(data.periodo.etiqueta_corta)}>
                 <ExportPanel exportando={exportando} onExportar={exportar} />
                 {errorExportar && (
                   <p className="mt-3 flex items-center gap-2 text-sm text-alerta">
@@ -378,26 +410,11 @@ export default function Dashboard({ sesion }: { sesion: Sesion }) {
                   </p>
                 )}
               </Section>
-
             </div>
           </div>
         )}
 
-        <footer className="mt-20 flex flex-wrap items-center justify-between gap-3 border-t border-linea pt-6 text-sm text-bruma">
-          <span>{data ? data.nota_datos : "Quasar Logistics, torre de control logística."}</span>
-          <span>
-            Built by{" "}
-            <a
-              href="https://quasar-devs.vercel.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="enlace-quasar font-display text-base font-semibold"
-            >
-              QUASAR DEVS
-              
-            </a>
-          </span>
-        </footer>
+        <Creditos nota={data?.nota_datos} />
       </div>
 
       <UploadModal

@@ -8,12 +8,11 @@ import {
 } from "lucide-react";
 import { iniciarSesion, entrarComoInvitado, CREDENCIALES_DEMO } from "./auth";
 import MapaPuntos from "./MapaPuntos";
+import LanguageSwitch from "./LanguageSwitch";
+import { EnlaceQuasar } from "./Creditos";
+import { useT } from "./i18n";
 
-const BENEFICIOS = [
-  { icono: ChartColumn, texto: "Indicadores OTIF con metas y semáforo" },
-  { icono: ShieldCheck, texto: "Hallazgos, conclusiones y recomendaciones" },
-  { icono: FileText, texto: "Reporte ejecutivo en PDF y PowerPoint" },
-];
+const ICONOS_BENEFICIOS = [ChartColumn, ShieldCheck, FileText];
 
 const contenedor: Variants = {
   oculto: { opacity: 0 },
@@ -25,6 +24,7 @@ const elemento: Variants = {
 };
 
 export default function Login() {
+  const t = useT();
   const [usuario, setUsuario] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [verContrasena, setVerContrasena] = useState(false);
@@ -40,7 +40,7 @@ export default function Login() {
     await new Promise((r) => setTimeout(r, 650));
     if (!iniciarSesion(usuario, contrasena)) {
       setEntrando(null);
-      setError("Usuario o contraseña incorrectos.");
+      setError("credenciales");
       animar(tarjeta.current, { x: [0, -12, 12, -8, 8, -4, 4, 0] }, { duration: 0.45 });
     }
   };
@@ -59,8 +59,26 @@ export default function Login() {
   };
 
   return (
-    <main className="relative min-h-screen bg-abismo text-white overflow-hidden flex items-center justify-center p-4 sm:p-8">
+    <main className="relative min-h-screen bg-abismo text-white overflow-hidden flex items-center justify-center px-4 py-20 sm:p-8">
       <MapaPuntos />
+
+      {/* Idioma (arriba a la derecha) y autoría (abajo a la derecha) */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6"
+      >
+        <LanguageSwitch />
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="absolute bottom-4 right-4 z-20 sm:bottom-6 sm:right-6"
+      >
+        <EnlaceQuasar />
+      </motion.div>
 
       <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-2 gap-10 items-center">
         {/* Panel de presentación */}
@@ -75,25 +93,28 @@ export default function Login() {
               <Truck className="text-cyan-300" size={26} />
             </div>
             <div>
-              <p className="font-display text-2xl font-semibold leading-none">Quasar Logistics</p>
-              <p className="text-sm text-slate-400 mt-1">Torre de control logística</p>
+              <p className="font-display text-2xl font-semibold leading-none">{t.marca.nombre}</p>
+              <p className="text-sm text-slate-400 mt-1">{t.marca.subtitulo}</p>
             </div>
           </div>
           <h1 className="font-display text-5xl font-semibold leading-[1.02] tracking-[-0.01em] text-balance">
-            Convierte tu reporte de entregas en decisiones de negocio.
+            {t.login.titular}
           </h1>
           <p className="text-slate-300/80 text-lg mt-5 max-w-md leading-relaxed">
-            Carga el reporte de SAP y obtén en segundos el diagnóstico de cumplimiento de tu operación logística.
+            {t.login.descripcion}
           </p>
           <motion.ul variants={contenedor} initial="oculto" animate="visible" className="mt-8 space-y-3">
-            {BENEFICIOS.map(({ icono: Icono, texto }) => (
+            {t.login.beneficios.map((texto, i) => {
+              const Icono = ICONOS_BENEFICIOS[i];
+              return (
               <motion.li key={texto} variants={elemento} className="flex items-center gap-3 text-slate-300">
                 <span className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-center">
                   <Icono size={16} className="text-cyan-300" />
                 </span>
                 {texto}
               </motion.li>
-            ))}
+              );
+            })}
           </motion.ul>
         </motion.div>
 
@@ -111,32 +132,32 @@ export default function Login() {
             <motion.div variants={contenedor} initial="oculto" animate="visible">
               <motion.div variants={elemento} className="lg:hidden flex items-center gap-2 mb-6">
                 <Truck className="text-cyan-300" size={22} />
-                <span className="font-display text-xl font-semibold">Quasar Logistics</span>
+                <span className="font-display text-xl font-semibold">{t.marca.nombre}</span>
               </motion.div>
               <motion.h2 variants={elemento} className="font-display text-3xl font-semibold">
-                Iniciar sesión
+                {t.login.titulo}
               </motion.h2>
               <motion.p variants={elemento} className="text-slate-400 text-sm mt-1 mb-6">
-                Accede a la torre de control logística.
+                {t.login.subtitulo}
               </motion.p>
 
               <form onSubmit={enviar} className="space-y-4">
                 <motion.label variants={elemento} className="block">
-                  <span className="text-xs font-medium text-slate-400">Usuario</span>
+                  <span className="text-xs font-medium text-slate-400">{t.login.usuario}</span>
                   <div className="mt-1 flex items-center gap-2 bg-slate-950/60 border border-slate-700 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/20 rounded-lg px-3 transition">
                     <User size={18} className="text-slate-500" />
                     <input
                       value={usuario}
                       onChange={(e) => setUsuario(e.target.value)}
                       autoComplete="username"
-                      placeholder="Tu usuario"
+                      placeholder={t.login.usuarioPlaceholder}
                       className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-slate-600"
                     />
                   </div>
                 </motion.label>
 
                 <motion.label variants={elemento} className="block">
-                  <span className="text-xs font-medium text-slate-400">Contraseña</span>
+                  <span className="text-xs font-medium text-slate-400">{t.login.contrasena}</span>
                   <div className="mt-1 flex items-center gap-2 bg-slate-950/60 border border-slate-700 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/20 rounded-lg px-3 transition">
                     <Lock size={18} className="text-slate-500" />
                     <input
@@ -151,7 +172,7 @@ export default function Login() {
                       type="button"
                       onClick={() => setVerContrasena((v) => !v)}
                       className="text-slate-500 hover:text-slate-300 cursor-pointer"
-                      aria-label={verContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      aria-label={verContrasena ? t.login.ocultar : t.login.mostrar}
                     >
                       {verContrasena ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -168,7 +189,7 @@ export default function Login() {
                     >
                       <div className="flex items-center gap-2 text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
                         <CircleAlert size={16} className="shrink-0" />
-                        {error}
+                        {t.login.error}
                       </div>
                     </motion.div>
                   )}
@@ -183,12 +204,12 @@ export default function Login() {
                   className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-70 text-slate-950 font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer disabled:cursor-wait transition-colors"
                 >
                   {entrando === "usuario" ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
-                  {entrando === "usuario" ? "Verificando..." : "Entrar"}
+                  {entrando === "usuario" ? t.login.verificando : t.login.entrar}
                 </motion.button>
               </form>
 
               <motion.div variants={elemento} className="flex items-center gap-3 my-5 text-xs text-slate-500">
-                <span className="flex-1 h-px bg-slate-700" /> o <span className="flex-1 h-px bg-slate-700" />
+                <span className="flex-1 h-px bg-slate-700" /> {t.login.o} <span className="flex-1 h-px bg-slate-700" />
               </motion.div>
 
               <motion.button
@@ -200,7 +221,7 @@ export default function Login() {
                 className="w-full border border-slate-600 hover:border-cyan-500/60 hover:bg-slate-800/60 text-slate-200 font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer disabled:cursor-wait transition-colors"
               >
                 {entrando === "invitado" ? <Loader2 size={18} className="animate-spin" /> : <UserRound size={18} />}
-                Entrar como invitado
+                {t.login.invitado}
               </motion.button>
 
               <motion.button
@@ -211,9 +232,9 @@ export default function Login() {
               >
                 <KeyRound size={14} className="text-cyan-400 mt-0.5 shrink-0" />
                 <span>
-                  Acceso de demostración: usuario <code className="text-cyan-300">{CREDENCIALES_DEMO.usuario}</code> ·
-                  contraseña <code className="text-cyan-300">{CREDENCIALES_DEMO.contrasena}</code>. Haz clic para
-                  llenarlo.
+                  {t.login.demoPrefijo} {t.login.demoUsuario} <code className="text-cyan-300">{CREDENCIALES_DEMO.usuario}</code> ·{" "}
+                  {t.login.demoContrasena} <code className="text-cyan-300">{CREDENCIALES_DEMO.contrasena}</code>.{" "}
+                  {t.login.demoAccion}
                 </span>
               </motion.button>
             </motion.div>

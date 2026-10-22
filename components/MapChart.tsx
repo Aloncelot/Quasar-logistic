@@ -2,7 +2,9 @@
 
 import React, { useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
-import { EstadoKPI, PALETA, SEMAFORO, fmtMxn } from "./types";
+import { EstadoKPI, PALETA, SEMAFORO, fmtMxn, fmtNum } from "./types";
+import { useIdioma } from "./preferencias";
+import { useT } from "./i18n";
 
 // Contornos de los estados de México (Highcharts)
 const geoUrl = "https://code.highcharts.com/mapdata/countries/mx/mx-all.topo.json";
@@ -36,6 +38,8 @@ interface HoverInfo {
 }
 
 export default function MapChart({ mapData, meta }: MapaProps) {
+  const t = useT();
+  const [idioma] = useIdioma();
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
 
@@ -64,8 +68,8 @@ export default function MapChart({ mapData, meta }: MapaProps) {
   return (
     <div ref={contenedorRef} className="relative h-[600px] w-full overflow-hidden rounded-xl border border-linea bg-panel">
       <div className="pointer-events-none absolute left-6 top-6 z-10">
-        <h3 className="font-display text-xl font-semibold text-tinta">Pedidos perfectos por estado</h3>
-        <p className="mt-1 text-sm text-bruma">Pasa el cursor sobre un estado para ver el detalle</p>
+        <h3 className="font-display text-xl font-semibold text-tinta">{t.mapa.titulo}</h3>
+        <p className="mt-1 text-sm text-bruma">{t.mapa.subtitulo}</p>
       </div>
 
       <ComposableMap projection="geoMercator" projectionConfig={{ scale: 1400, center: [-102, 24] }} className="h-full w-full">
@@ -105,19 +109,19 @@ export default function MapChart({ mapData, meta }: MapaProps) {
           {hover.datos ? (
             <div className="mt-1 space-y-1 text-niebla">
               <p className="flex items-center justify-between gap-4">
-                OTIF
+                {t.mapa.otif}
                 <span className={`font-semibold ${SEMAFORO[hover.datos.estado_semaforo].texto}`}>
-                  {hover.datos.otif_pct}% · {SEMAFORO[hover.datos.estado_semaforo].etiqueta}
+                  {hover.datos.otif_pct}% · {t.semaforo[hover.datos.estado_semaforo]}
                 </span>
               </p>
-              <p className="flex justify-between gap-4">A tiempo <span className="text-tinta">{hover.datos.on_time_pct}%</span></p>
-              <p className="flex justify-between gap-4">Completos <span className="text-tinta">{hover.datos.in_full_pct}%</span></p>
-              <p className="flex justify-between gap-4">Pedidos <span className="text-tinta">{hover.datos.volumen.toLocaleString("es-MX")}</span></p>
-              <p className="flex justify-between gap-4">Valor con incidencia <span className="text-tinta">{fmtMxn(hover.datos.valor_incidencias_mxn)}</span></p>
-              {hover.datos.causa_principal && <p className="pt-1 text-xs text-bruma">Causa principal: {hover.datos.causa_principal}</p>}
+              <p className="flex justify-between gap-4">{t.mapa.aTiempo} <span className="text-tinta">{hover.datos.on_time_pct}%</span></p>
+              <p className="flex justify-between gap-4">{t.mapa.completos} <span className="text-tinta">{hover.datos.in_full_pct}%</span></p>
+              <p className="flex justify-between gap-4">{t.mapa.pedidos} <span className="text-tinta">{fmtNum(hover.datos.volumen, idioma)}</span></p>
+              <p className="flex justify-between gap-4">{t.mapa.valor} <span className="text-tinta">{fmtMxn(hover.datos.valor_incidencias_mxn, idioma)}</span></p>
+              {hover.datos.causa_principal && <p className="pt-1 text-xs text-bruma">{t.mapa.causa} {hover.datos.causa_principal}</p>}
             </div>
           ) : (
-            <p className="text-bruma">Sin operación en el periodo</p>
+            <p className="text-bruma">{t.mapa.sinOperacion}</p>
           )}
         </div>
       )}
@@ -125,8 +129,8 @@ export default function MapChart({ mapData, meta }: MapaProps) {
       {/* Leyenda: rampa continua con la meta marcada */}
       <div className="absolute bottom-5 left-6 right-6 rounded-lg border border-linea bg-noche/85 p-3 backdrop-blur">
         <div className="mb-2 flex items-center justify-between text-xs text-niebla">
-          <span>Menor OTIF</span>
-          <span>Mayor OTIF</span>
+          <span>{t.mapa.menor}</span>
+          <span>{t.mapa.mayor}</span>
         </div>
         <div className="relative">
           <div
@@ -141,7 +145,7 @@ export default function MapChart({ mapData, meta }: MapaProps) {
           <span className="absolute left-0">{minimo}%</span>
           {meta >= minimo && meta <= maximo && (
             <span className="absolute -translate-x-1/2 text-tinta" style={{ left: `${escala(meta) * 100}%` }}>
-              Meta {meta}%
+              {t.mapa.meta(meta)}
             </span>
           )}
           <span className="absolute right-0">{maximo}%</span>

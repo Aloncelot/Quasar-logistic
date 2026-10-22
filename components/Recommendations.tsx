@@ -2,6 +2,7 @@
 
 import { CalendarClock, UserCog } from "lucide-react";
 import { Recomendacion } from "./types";
+import { useT } from "./i18n";
 
 /** Conclusiones y recomendaciones con responsable, plazo e impacto estimado. */
 export default function Recommendations({
@@ -11,11 +12,12 @@ export default function Recommendations({
   conclusiones: string[];
   recomendaciones: Recomendacion[];
 }) {
+  const t = useT();
   const maxImpacto = Math.max(0.1, ...recomendaciones.map((r) => r.impacto_pts ?? 0));
   return (
     <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
       <div className="xl:col-span-2">
-        <h3 className="font-display text-2xl font-semibold text-tinta">Lo que nos dice el periodo</h3>
+        <h3 className="font-display text-2xl font-semibold text-tinta">{t.recomendaciones.conclusiones}</h3>
         <ul className="mt-5 space-y-4">
           {conclusiones.map((c) => (
             <li key={c} className="flex gap-3">
@@ -27,7 +29,7 @@ export default function Recommendations({
       </div>
 
       <div className="xl:col-span-3">
-        <h3 className="font-display text-2xl font-semibold text-tinta">Qué proponemos, en orden de prioridad</h3>
+        <h3 className="font-display text-2xl font-semibold text-tinta">{t.recomendaciones.propuestas}</h3>
         <ol className="mt-5 overflow-hidden rounded-xl border border-linea">
           {recomendaciones.map((r, i) => (
             <li key={r.titulo} className="grid grid-cols-[3rem_1fr] gap-4 border-b border-linea bg-panel p-5 last:border-0 sm:grid-cols-[3rem_1fr_9rem]">
@@ -49,7 +51,7 @@ export default function Recommendations({
                 {r.impacto_pts ? (
                   <>
                     <p className="font-display text-2xl font-semibold leading-none text-artico">+{r.impacto_pts.toFixed(1)} pts</p>
-                    <p className="mt-1 text-xs text-bruma">OTIF estimado</p>
+                    <p className="mt-1 text-xs text-bruma">{t.recomendaciones.otifEstimado}</p>
                     <div className="mt-2 h-1.5 rounded-full bg-linea sm:ml-auto sm:w-28">
                       <div className="h-full rounded-full bg-artico" style={{ width: `${(r.impacto_pts / maxImpacto) * 100}%` }} />
                     </div>
@@ -62,7 +64,7 @@ export default function Recommendations({
           ))}
         </ol>
         <p className="mt-3 text-xs text-bruma">
-          Impacto estimado: el grupo intervenido iguala el desempeño promedio del resto. Los efectos no son estrictamente acumulables.
+          {t.recomendaciones.nota}
         </p>
       </div>
     </div>
